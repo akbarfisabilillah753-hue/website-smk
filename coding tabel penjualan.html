@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tabel Penjualan produk</title>
+<style>
+  :root {
+    --bg: #eef2f1;
+    --surface: #ffffff;
+    --ink: #15302b;
+    --muted: #6b7f7a;
+    --line: #dde6e3;
+    --accent: #0f766e;
+    --accent-soft: #d5f0ec;
+    --warn: #b45309;
+    --warn-soft: #fdecc8;
+    --bad: #b91c1c;
+    --bad-soft: #fbdcdc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1917;
+      --surface: #16241f;
+      --ink: #e6f1ee;
+      --muted: #8da39d;
+      --line: #253732;
+      --accent: #2dd4bf;
+      --accent-soft: #12403a;
+      --warn: #fbbf24;
+      --warn-soft: #3d3010;
+      --bad: #f87171;
+      --bad-soft: #421c1c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px 16px 56px;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; }
+  h1 { font-size: 1.9rem; margin: 0 0 4px; letter-spacing: -0.02em; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 22px; }
+  .stat { background: var(--surface); border-radius: 14px; padding: 16px 18px; border: 1px solid var(--line); }
+  .stat span { display: block; color: var(--muted); font-size: .85rem; }
+  .stat strong { font-size: 1.5rem; letter-spacing: -0.01em; }
+  .stat.main { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .stat.main span { color: #d5f0ec; }
+
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(15,60,52,.08); }
+  .tools { display: flex; flex-wrap: wrap; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .tools input, .tools select {
+    font: inherit; color: var(--ink); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px;
+  }
+  .tools input { flex: 1 1 220px; }
+  .tools input:focus, .tools select:focus, th button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 780px; }
+  th, td { padding: 13px 16px; text-align: left; vertical-align: top; }
+  th { background: var(--bg); font-weight: 600; font-size: .9rem; color: var(--muted); white-space: nowrap; }
+  th button { all: unset; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+  th button:hover { color: var(--ink); }
+  th .arrow { font-size: .7rem; opacity: .5; }
+  th[aria-sort="ascending"] .arrow, th[aria-sort="descending"] .arrow { opacity: 1; color: var(--accent); }
+  td { border-top: 1px solid var(--line); }
+  tbody tr:hover { background: var(--accent-soft); }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  td.tgl, td.tokoh { white-space: nowrap; }
+  .tokoh { font-weight: 600; }
+
+  .produk { list-style: none; margin: 0; padding: 0; }
+  .produk li { display: flex; justify-content: space-between; gap: 18px; padding: 2px 0; }
+  .produk li + li { border-top: 1px dashed var(--line); }
+  .produk .qty { color: var(--muted); font-size: .85rem; white-space: nowrap; }
+
+  .badge { display: inline-block; padding: 3px 11px; border-radius: 999px; font-size: .8rem; font-weight: 600; }
+  .lunas { background: var(--accent-soft); color: var(--accent); }
+  .proses { background: var(--warn-soft); color: var(--warn); }
+  .batal { background: var(--bad-soft); color: var(--bad); }
+
+  tfoot td { border-top: 2px solid var(--line); font-weight: 700; background: var(--bg); }
+  .empty { padding: 28px; text-align: center; color: var(--muted); display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Laporan Penjualan</h1>
+  <p class="sub">Oktober 2026 — klik judul kolom untuk mengurutkan.</p>
+
+  <div class="stats">
+    <div class="stat main"><span>Total pendapatan</span><strong id="sTotal">-</strong></div>
+    <div class="stat"><span>Jumlah transaksi</span><strong id="sCount">-</strong></div>
+    <div class="stat"><span>Produk terlaris</span><strong id="sTop">-</strong></div>
+  </div>
+
+  <div class="panel">
+    <div class="tools">
+      <input type="search" id="cari" placeholder="Cari tokoh atau produk…" aria-label="Cari">
+      <select id="filter" aria-label="Filter status">
+        <option value="">Semua status</option>
+        <option>Lunas</option>
+        <option>Diproses</option>
+        <option>Batal</option>
+      </select>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th data-key="tgl"><button>Tanggal <span class="arrow">▲▼</span></button></th>
+            <th data-key="tokoh"><button>Tokoh <span class="arrow">▲▼</span></button></th>
+            <th data-key="produkText"><button>Produk (3 item) <span class="arrow">▲▼</span></button></th>
+            <th data-key="qty" class="num"><button>Jumlah <span class="arrow">▲▼</span></button></th>
+            <th data-key="total" class="num"><button>Total <span class="arrow">▲▼</span></button></th>
+            <th data-key="status"><button>Status <span class="arrow">▲▼</span></button></th>
+          </tr>
+        </thead>
+        <tbody id="isi"></tbody>
+        <tfoot>
+          <tr><td colspan="4">Total (tanpa transaksi batal)</td><td class="num" id="fTotal">-</td><td></td></tr>
+        </tfoot>
+      </table>
+    </div>
+    <div class="empty" id="kosong">Tidak ada data yang cocok. Ubah kata kunci atau filter.</div>
+  </div>
+</div>
+
+<script>
+  // Daftar harga produk
+  const harga = {
+    "Kopi Arabika 250g": 85000,
+    "Kopi Robusta 250g": 70000,
+    "Teh Hijau Premium": 45000,
+    "Gula Aren Cair": 32000,
+    "Keripik Tempe": 18000,
+    "Sambal Roa": 38000,
+    "Madu Hutan 500ml": 120000,
+    "Tumbler Stainless": 95000,
+    "Tote Bag Kanvas": 55000
+  };
+
+  // Tiap transaksi berisi 3 produk: [nama produk, jumlah]
+  const data = [
+    { tgl: "2026-10-01", tokoh: "Akbar",      status: "Lunas",    items: [["Kopi Arabika 250g", 12], ["Teh Hijau Premium", 6],  ["Gula Aren Cair", 10]] },
+    { tgl: "2026-10-03", tokoh: "Arfan",    status: "Lunas",    items: [["Teh Hijau Premium", 20], ["Madu Hutan 500ml", 3],   ["Keripik Tempe", 15]] },
+    { tgl: "2026-10-05", tokoh: "bayu",   status: "Diproses", items: [["Keripik Tempe", 50],     ["Sambal Roa", 20],        ["Gula Aren Cair", 12]] },
+    { tgl: "2026-10-08", tokoh: "ismail",        status: "Lunas",    items: [["Madu Hutan 500ml", 6],   ["Kopi Robusta 250g", 10], ["Tote Bag Kanvas", 5]] },
+    { tgl: "2026-10-10", tokoh: "zidan",       status: "Batal",    items: [["Tumbler Stainless", 4],  ["Tote Bag Kanvas", 8],    ["Teh Hijau Premium", 5]] },
+    { tgl: "2026-10-12", tokoh: "irfan",      status: "Lunas",    items: [["Kopi Arabika 250g", 30], ["Kopi Robusta 250g", 15], ["Madu Hutan 500ml", 4]] },
+    { tgl: "2026-10-15", tokoh: "ignasius",  status: "Diproses", items: [["Sambal Roa", 15],        ["Keripik Tempe", 25],     ["Gula Aren Cair", 8]] },
+    { tgl: "2026-10-18", tokoh: "aliyah",     status: "Lunas",    items: [["Tote Bag Kanvas", 25],   ["Tumbler Stainless", 10], ["Teh Hijau Premium", 12]] },
+    { tgl: "2026-10-20", tokoh: "almira",  status: "Lunas",    items: [["Teh Hijau Premium", 40], ["Kopi Arabika 250g", 8],  ["Sambal Roa", 10]] },
+    { tgl: "2026-10-22", tokoh: "junita",      status: "Diproses", items: [["Madu Hutan 500ml", 8],   ["Gula Aren Cair", 20],    ["Keripik Tempe", 30]] }
+  ].map(d => ({
+    ...d,
+    produkText: d.items.map(i => i[0]).join(", "),
+    qty: d.items.reduce((s, i) => s + i[1], 0),
+    total: d.items.reduce((s, i) => s + i[1] * harga[i[0]], 0)
+  }));
+
+  const rupiah = n => "Rp " + n.toLocaleString("id-ID");
+  const tanggal = s => new Date(s + "T00:00:00").toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+  const kelas = { Lunas: "lunas", Diproses: "proses", Batal: "batal" };
+
+  let sortKey = "tgl", sortDir = 1;
+  const isi = document.getElementById("isi");
+  const kosong = document.getElementById("kosong");
+
+  function render() {
+    const q = document.getElementById("cari").value.trim().toLowerCase();
+    const f = document.getElementById("filter").value;
+
+    const rows = data
+      .filter(d => (!f || d.status === f) && (!q || (d.tokoh + " " + d.produkText).toLowerCase().includes(q)))
+      .sort((a, b) => (a[sortKey] > b[sortKey] ? 1 : a[sortKey] < b[sortKey] ? -1 : 0) * sortDir);
+
+    isi.innerHTML = rows.map(d => `
+      <tr>
+        <td class="tgl">${tanggal(d.tgl)}</td>
+        <td class="tokoh">${d.tokoh}</td>
+        <td>
+          <ul class="produk">
+            ${d.items.map(i => `<li><span>${i[0]}</span><span class="qty">× ${i[1]}</span></li>`).join("")}
+          </ul>
+        </td>
+        <td class="num">${d.qty}</td>
+        <td class="num">${rupiah(d.total)}</td>
+        <td><span class="badge ${kelas[d.status]}">${d.status}</span></td>
+      </tr>`).join("");
+
+    kosong.style.display = rows.length ? "none" : "block";
+
+    const sah = data.filter(d => d.status !== "Batal");
+    document.getElementById("fTotal").textContent = rupiah(rows.filter(d => d.status !== "Batal").reduce((s, d) => s + d.total, 0));
+    document.getElementById("sTotal").textContent = rupiah(sah.reduce((s, d) => s + d.total, 0));
+    document.getElementById("sCount").textContent = data.length + " transaksi";
+
+    const per = {};
+    sah.forEach(d => d.items.forEach(i => per[i[0]] = (per[i[0]] || 0) + i[1]));
+    document.getElementById("sTop").textContent = Object.entries(per).sort((a, b) => b[1] - a[1])[0][0];
+
+    document.querySelectorAll("th[data-key]").forEach(th => {
+      const aktif = th.dataset.key === sortKey;
+      th.setAttribute("aria-sort", aktif ? (sortDir === 1 ? "ascending" : "descending") : "none");
+      th.querySelector(".arrow").textContent = aktif ? (sortDir === 1 ? "▲" : "▼") : "▲▼";
+    });
+  }
+
+  document.querySelectorAll("th[data-key]").forEach(th =>
+    th.addEventListener("click", () => {
+      const k = th.dataset.key;
+      sortDir = sortKey === k ? -sortDir : 1;
+      sortKey = k;
+      render();
+    })
+  );
+  document.getElementById("cari").addEventListener("input", render);
+  document.getElementById("filter").addEventListener("change", render);
+  render();
+</script>
+</body>
+</html>
